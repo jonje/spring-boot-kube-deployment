@@ -1,0 +1,61 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-api
+  namespace: default
+  labels:
+    app: test-api
+spec:
+  replicas: 1
+  progressDeadlineSeconds: 600
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: test-api
+  template:
+    metadata:
+      labels:
+        app: test-api
+    spec:
+      initContainers:
+        - image: k8s.gcr.io/git-sync:v3.1.5
+          name: init-sync
+          volumeMounts:
+            - name: app_dir
+              mountPath: /tmp/git
+          env:
+            - name: GIT_SYNC_REPO
+              value: https://github.com/jonje/spring-boot-kube-deployment.git
+            - name: GIT_SYNC_BRANCH
+              value: main
+            - name: GIT_SYNC_DEPTH
+              value: "1"
+            - name: GIT_SYNC_DEST
+              value: "app_dir"
+        - image: maven:3.8-openjdk-11
+          name: init-mvn-build
+          volumeMounts:
+            - name: app_dir
+              mountPath: /usr/src/myapp
+          env:
+          workingDir: app_dir
+          command:
+            - "mvn"
+            - "clean"
+            - "package"
+      containers:
+        - name: test-api
+          image: openjdk:11
+          command:
+            - "java"
+            - "-jar"
+            - "/usr/src/myapp/target/*.jar"
+          volumeMounts:
+            - name: app_dir
+              mountPath: /usr/src/myapp
+      volumes:
+        - name: app_dir
+          emptyDir: {}
