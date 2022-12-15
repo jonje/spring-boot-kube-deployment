@@ -24,7 +24,7 @@ spec:
         - image: k8s.gcr.io/git-sync:v3.1.5
           name: init-sync
           volumeMounts:
-            - name: app_dir
+            - name: app-dir
               mountPath: /tmp/git
           env:
             - name: GIT_SYNC_REPO
@@ -34,28 +34,36 @@ spec:
             - name: GIT_SYNC_DEPTH
               value: "1"
             - name: GIT_SYNC_DEST
-              value: "app_dir"
-        - image: maven:3.8-openjdk-11
+              value: "code"
+            - name: GIT_SYNC_ONE_TIME
+              value: "true"
+        - image: maven:3.8-amazoncorretto-11
           name: init-mvn-build
           volumeMounts:
-            - name: app_dir
+            - name: app-dir
               mountPath: /usr/src/myapp
           env:
-          workingDir: app_dir
+          workingDir: /usr/src/myapp/code
           command:
             - "mvn"
             - "clean"
             - "package"
+            - "-DskipTests"
+#          command: [ "/bin/bash" ]
+#          args: [ "-c", "ls" ]
       containers:
         - name: test-api
-          image: openjdk:11
+          image: eclipse-temurin:11-jre-alpine
+          workingDir: /usr/src/myapp/code/target
           command:
             - "java"
             - "-jar"
-            - "/usr/src/myapp/target/*.jar"
+            - "app.jar"
+#          command: ["/bin/sh"]
+#          args: ["-c", "ls"]
           volumeMounts:
-            - name: app_dir
+            - name: app-dir
               mountPath: /usr/src/myapp
       volumes:
-        - name: app_dir
+        - name: app-dir
           emptyDir: {}
